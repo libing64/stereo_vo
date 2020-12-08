@@ -3,6 +3,7 @@
     <node pkg="stereo_vo" type="stereo_vo" name="stereo_vo" output="screen" >
         <remap from="/left_image" to="/kitti_stereo/left/image_rect"/>
         <remap from="/right_image" to="/kitti_stereo/right/image_rect"/>
+        <remap from="/camera_info" to="/kitti_stereo/right/camera_info"/>
     </node>
     <!-- <node pkg="rviz" type="rviz" name="rviz" args="-d $(find lidar_pose_estimator)/rviz_cfg/kitti_velodyne.rviz"/> -->
 </launch>

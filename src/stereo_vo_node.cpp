@@ -3,6 +3,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/CameraInfo.h>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include "stereo_vo.h"
@@ -15,6 +16,15 @@
 using namespace std;
 using namespace Eigen;
 using namespace cv;
+
+ros::Subscriber camera_info_sub;
+stereo_vo stereo;
+
+void camera_info_callback(const sensor_msgs::CameraInfoConstPtr &msg)
+{
+    stereo.set_camere_info(msg);
+    camera_info_sub.shutdown();
+}
 
 void image_callback(const sensor_msgs::ImageConstPtr &left_image_msg,
                     const sensor_msgs::ImageConstPtr &right_image_msg)
@@ -30,6 +40,8 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "stereo_vo");
     ros::NodeHandle n("~");
+
+    camera_info_sub = n.subscribe("/camera_info", 100, camera_info_callback);
 
     message_filters::Subscriber<sensor_msgs::Image> left_img_sub(n, "/left_image", 1);
     message_filters::Subscriber<sensor_msgs::Image> right_img_sub(n, "/right_image", 2);

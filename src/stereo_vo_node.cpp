@@ -31,8 +31,8 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "stereo_vo");
     ros::NodeHandle n("~");
 
-    message_filters::Subscriber<sensor_msgs::Image> left_img_sub(n, "left_image", 1);
-    message_filters::Subscriber<sensor_msgs::Image> right_img_sub(n, "left_image", 2);
+    message_filters::Subscriber<sensor_msgs::Image> left_img_sub(n, "/left_image", 1);
+    message_filters::Subscriber<sensor_msgs::Image> right_img_sub(n, "/right_image", 2);
 
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
     message_filters::Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), left_img_sub, right_img_sub);

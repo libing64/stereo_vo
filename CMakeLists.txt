@@ -162,8 +162,8 @@ include_directories(
 #   ${catkin_LIBRARIES}
 # )
 
-add_executable(stereo_vo_node  src/stereo_vo_node.cpp)
-target_link_libraries(stereo_vo_node ${catkin_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS})
+add_executable(stereo_vo  src/stereo_vo_node.cpp)
+target_link_libraries(stereo_vo ${catkin_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS})
 
 #############
 ## Install ##

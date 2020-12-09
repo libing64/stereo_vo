@@ -22,7 +22,8 @@ stereo_vo stereo;
 
 void camera_info_callback(const sensor_msgs::CameraInfoConstPtr &msg)
 {
-    stereo.set_camere_info(msg);
+    if (!stereo.is_camera_info_init)
+        stereo.set_camere_info(msg);
     camera_info_sub.shutdown();
 }
 
@@ -41,7 +42,7 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "stereo_vo");
     ros::NodeHandle n("~");
 
-    camera_info_sub = n.subscribe("/camera_info", 100, camera_info_callback);
+    camera_info_sub = n.subscribe("/camera_info", 10, camera_info_callback);
 
     message_filters::Subscriber<sensor_msgs::Image> left_img_sub(n, "/left_image", 1);
     message_filters::Subscriber<sensor_msgs::Image> right_img_sub(n, "/right_image", 2);

@@ -1,5 +1,8 @@
 <launch>
     
+
+    <node pkg="rosbag" type="play" name="play" args="/home/libing/data/rosbag/kitti_stereo/kitti_07.bag" />
+
     <node pkg="stereo_vo" type="stereo_vo" name="stereo_vo" output="screen" >
         <remap from="/left_image" to="/kitti_stereo/left/image_rect"/>
         <remap from="/right_image" to="/kitti_stereo/right/image_rect"/>

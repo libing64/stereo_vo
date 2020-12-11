@@ -30,12 +30,16 @@ void camera_info_callback(const sensor_msgs::CameraInfoConstPtr &msg)
 void image_callback(const sensor_msgs::ImageConstPtr &left_image_msg,
                     const sensor_msgs::ImageConstPtr &right_image_msg)
 {
-    Mat left_img = cv_bridge::toCvCopy(left_image_msg, string("mono8"))->image;
-    Mat right_img = cv_bridge::toCvCopy(left_image_msg, string("mono8"))->image;
-    imshow("left", left_img);
-    imshow("right", right_img);
-    waitKey(2);
-    stereo.update(left_img, right_img);
+    if (stereo.is_camera_info_init)
+    {
+        Mat left_img = cv_bridge::toCvCopy(left_image_msg, string("mono8"))->image;
+        Mat right_img = cv_bridge::toCvCopy(left_image_msg, string("mono8"))->image;
+        imshow("left", left_img);
+        imshow("right", right_img);
+        waitKey(2);
+        stereo.update(left_img, right_img);
+    }
+
 }
 
 int main(int argc, char** argv)

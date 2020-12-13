@@ -61,6 +61,8 @@ public:
     void stereo_detect(Mat &left_img, Mat &right_img);
     void stereo_visualize(Mat &left_img, Mat &right_img, vector<Point2f>&left_feats, vector<Point2f>&right_feats);
 
+    int stereo_track(Mat& keyframe, Mat& img);
+
     void update(Mat& left_img, Mat& right_img);
     void update_keyframe(Mat &left_img, Mat &right_img);
     int get_valid_feat_cnt(vector<uchar>& status);
@@ -187,6 +189,47 @@ void stereo_vo::stereo_visualize(Mat &left_img, Mat &right_img, vector<Point2f> 
     }
 }
 
+int stereo_vo::stereo_track(Mat &keyframe, Mat &img)
+{
+    vector<uchar> status;
+    vector<float> err;
+    vector<Point2f> feats_curr;
+    cv::calcOpticalFlowPyrLK(keyframe, img, feats, feats_curr, status, err);
+    int count = std::count(status.begin(), status.end(), 1);
+
+    vector<Point3f> point3ds(count);
+    vector<Point2f> points(count);
+
+    vector<Point2f> points_curr(count);
+    int j = 0;
+    for (auto i = 0; i < status.size(); i++)
+    {
+        if (status[i])
+        {
+            point3ds[j] = feat3ds[i];
+            points_curr[j] = feats_curr[i];
+            points[j] = feats[i];
+            j++;
+        }
+    }
+    Mat rvec, tvec;
+    Mat dR;
+    vector<uchar> inliers;
+    bool ret = cv::solvePnPRansac(point3ds, points, camera_matrix, dist_coeffs,
+                                  rvec, tvec,
+                                  false, 30, 6.0, 0.99, inliers, cv::SOLVEPNP_ITERATIVE);
+    cout << "rvec: " << rvec << endl;
+    cout << "tvec: " << tvec << endl;
+    visualize_features(img, points, points_curr, inliers);
+    if (ret)
+    {
+        cv::Rodrigues(rvec, dR);
+    }
+
+    int inlier_count = std::count(inliers.begin(), inliers.end(), 1);
+    return inlier_count;
+}
+
 void stereo_vo::update(Mat &left_img, Mat &right_img)
 {
     if (feat3ds.empty() || feats.empty())
@@ -197,50 +240,12 @@ void stereo_vo::update(Mat &left_img, Mat &right_img)
         stereo_detect(left_img, right_img);
     } else 
     {
-        //feature tracking
-        vector<uchar> status;
-        vector<float> err;
-        vector<Point2f> feats_next;
-        cv::calcOpticalFlowPyrLK(keyframe_img, left_img, feats, feats_next, status, err);
-        visualize_features(left_img, feats, feats_next, status);
-        //waitKey(0);
-        int valid_cnt = get_valid_feat_cnt(status);
-        if (valid_cnt < min_track_cnt)//update keyframe
+        int inlier_count = stereo_track(keyframe_img, left_img);
+        if (inlier_count < min_feat_cnt)
         {
             stereo_detect(left_img, right_img);
-        } else 
-        {
-            vector<Point3f> point3ds(valid_cnt);
-            vector<Point2f> points(valid_cnt);
-            vector<Point2f> points_prev(valid_cnt);
-            int j = 0;
-            for (auto i = 0; i < status.size(); i++)
-            {
-                if (status[i])
-                {
-                    point3ds[j] = feat3ds[i];
-                    points[j] = feats_next[i];
-                    points_prev[j] = feats[i];
-                    j++;
-                }
-            }
-            Mat rvec, tvec;
-            Mat dR;
-            vector<uchar> inliers;
-            bool ret = cv::solvePnPRansac(point3ds, points, camera_matrix, dist_coeffs,
-                               rvec, tvec,
-                               false, 30, 6.0, 0.99, inliers, cv::SOLVEPNP_ITERATIVE);
-            cout << "rvec: " << rvec << endl;
-            cout << "tvec: " << tvec << endl;
-            //visualize_features(left_img, points_prev, points, inliers);
-            if (ret)
-            {
-                cv::Rodrigues(rvec, dR);
-            }
         }
     }
-
-    
 }
 
 void stereo_vo::stereo_triangulate(Mat &left_img, Mat &right_img, vector<Point2f> &feats, vector<Point3f> &feat3ds)

@@ -37,8 +37,8 @@ void image_callback(const sensor_msgs::ImageConstPtr &left_image_msg,
         //imshow("left", left_img);
         //imshow("right", right_img);
         //waitKey(2);
-        //stereo.update(left_img, right_img);
-        stereo.stereo_detect(left_img, right_img);
+        stereo.update(left_img, right_img);
+        //stereo.stereo_detect(left_img, right_img);
     }
 
 }

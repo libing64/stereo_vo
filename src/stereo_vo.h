@@ -57,6 +57,10 @@ public:
 stereo_vo::stereo_vo()
 {
     is_camera_info_init = false;
+    qk = Quaterniond::Identity();
+    tk = Vector3d::Zero();
+    q = qk;
+    t = tk;
 }
 
 stereo_vo::~stereo_vo()

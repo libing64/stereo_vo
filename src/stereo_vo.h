@@ -228,7 +228,7 @@ int stereo_vo::stereo_track(Mat &keyframe, Mat &img)
             }
             dt(i) = tvec.at<double>(i);
         }
-
+        dq = Quaterniond(R);
         t = tk + qk.toRotationMatrix() * dt;
         q = qk * dq;
         cout << "stereo track: " << q.coeffs().transpose() << "  t: " << t.transpose() << endl;

@@ -10,20 +10,6 @@ using namespace std;
 using namespace Eigen;
 using namespace cv;
 
-Vector3d point2eigen(Point3f& p)
-{
-
-}
-
-Point3f eigen2point(Vector3d& p)
-{
-    Point3f pp;
-    pp.x = p(0);
-    pp.y = p(1);
-    pp.z = p(2);
-    return pp;
-}
-
 class stereo_vo
 {
 private:
@@ -43,6 +29,7 @@ private:
 public:
     Quaterniond q;
     Vector3d t;
+    double timestamp;
 
     //state of keyframe
     Quaterniond qk;
@@ -56,7 +43,6 @@ public:
     ~stereo_vo();
 
     void set_camere_info(const sensor_msgs::CameraInfoConstPtr& msg);
-    void stereo_triangulate(Mat &left_img, Mat &right_img, vector<Point2f>& feats, vector<Point3f>& feat3ds);
 
     void stereo_detect(Mat &left_img, Mat &right_img);
     void stereo_visualize(Mat &left_img, Mat &right_img, vector<Point2f>&left_feats, vector<Point2f>&right_feats);
@@ -65,7 +51,6 @@ public:
 
     void update(Mat& left_img, Mat& right_img);
     void update_keyframe(Mat &left_img, Mat &right_img);
-    int get_valid_feat_cnt(vector<uchar>& status);
     void visualize_features(Mat &img, vector<Point2f> &feats, vector<Point2f> &feats_prev, vector<uchar> &status);
 };
 
@@ -149,6 +134,8 @@ void stereo_vo::stereo_detect(Mat &left_img, Mat &right_img)
     }
     //cout << "feat3ds: " << feat3ds << endl;
     left_img.copyTo(keyframe_img);
+    qk = q;
+    tk = t;
     stereo_visualize(left_img, right_img, left_feats, right_feats);
 }
 
@@ -226,6 +213,21 @@ int stereo_vo::stereo_track(Mat &keyframe, Mat &img)
         cv::Rodrigues(rvec, dR);
     }
 
+    Matrix3d R;
+    Quaterniond dq;
+    Vector3d dt;
+    for (int i = 0; i < 3; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            R(i, j) = dR.at<double>(i, j);
+        }
+        dt(i) = tvec.at<double>(i);
+    }
+
+    q = qk * dq;
+    t = tk + qk.toRotationMatrix() * dt;
+
     int inlier_count = std::count(inliers.begin(), inliers.end(), 1);
     return inlier_count;
 }
@@ -246,97 +248,6 @@ void stereo_vo::update(Mat &left_img, Mat &right_img)
             stereo_detect(left_img, right_img);
         }
     }
-}
-
-void stereo_vo::stereo_triangulate(Mat &left_img, Mat &right_img, vector<Point2f> &feats, vector<Point3f> &feat3ds)
-{
-    //triangulation
-    vector<uchar> status;
-    vector<float> err;
-    vector<Point2f> feats_right;
-    cv::calcOpticalFlowPyrLK(left_img, right_img, feats, feats_right, status, err);
-
-    double cx = K(0, 2);
-    double cy = K(1, 2);
-    double fx = K(0, 0);
-    feat3ds.resize(feats.size());
-    Point3f p;
-    for (auto i = 0; i < feats.size(); i++)
-    {
-        if (status[i])
-        {
-            double dy = feats[i].y - feats_right[i].y;
-            double dx = feats[i].x - feats_right[i].x;
-            if (fabs(dx) > min_disparity && fabs(dy) < max_epipolar)
-            {
-                p.z = fx * baseline / dx;
-                p.x = (feats[i].x - cx) / fx * p.z;
-                p.y = (feats[i].y - cy) / fx * p.z;
-                feat3ds[i] = p;
-            } else 
-            {
-                p.x = 0;
-                p.y = 0;
-                p.z = 0;
-                status[i] = 0;
-                feat3ds[i] = p;
-            }
-        }
-    }
-
-}
-
-void stereo_vo::update_keyframe(Mat &left_img, Mat &right_img)
-{
-
-#define USE_ORB_FEATURE
-#ifdef USE_ORB_FEATURE
-    Ptr<FeatureDetector> detector = cv::ORB::create();
-    vector<KeyPoint> points;
-    detector->detect(left_img, points);
-    feats.resize(points.size());
-    for (int i = 0; i < points.size(); i++)
-    {
-        feats[i] =  points[i].pt;
-    }
-#else
-    double quality_level = 0.01;
-    int block_size = 3;
-    bool use_harris = false;
-    double k = 0.04;
-
-    //feature detection
-    cv::goodFeaturesToTrack(left_img,
-                            feats,
-                            max_feat_cnt,
-                            quality_level,
-                            min_feat_dist,
-                            cv::Mat(),
-                            block_size,
-                            use_harris, k);
-    cout << "good feature size: " << feats.size() << endl;
-
-#endif
-
-
-    stereo_triangulate(left_img, right_img, feats, feat3ds);
-    left_img.copyTo(keyframe_img);
-
-    qk = q;
-    tk = t;
-}
-
-int stereo_vo::get_valid_feat_cnt(vector<uchar> &status)
-{
-    int cnt = 0;
-    for (auto i = 0; i < status.size(); i++)
-    {
-        if (status[i])
-        {
-            cnt++;
-        }
-    }
-    return cnt;
 }
 
 void stereo_vo::visualize_features(Mat &img, vector<Point2f> &feats, vector<Point2f> &feats_prev, vector<uchar>& status)

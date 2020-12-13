@@ -4,6 +4,10 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
+#include <tf/transform_datatypes.h>
+#include <tf/transform_broadcaster.h>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include "stereo_vo.h"
@@ -19,6 +23,12 @@ using namespace cv;
 
 ros::Subscriber camera_info_sub;
 stereo_vo stereo;
+
+ros::Publisher pub_odom, pub_pose, pub_path;
+
+void publish_odom(stereo_vo &stereo);
+void publish_pose(stereo_vo &stereo);
+void publish_path(stereo_vo &stereo);
 
 void camera_info_callback(const sensor_msgs::CameraInfoConstPtr &msg)
 {
@@ -37,10 +47,77 @@ void image_callback(const sensor_msgs::ImageConstPtr &left_image_msg,
         //imshow("left", left_img);
         //imshow("right", right_img);
         //waitKey(2);
+        stereo.timestamp = left_image_msg->header.stamp.toSec();
         stereo.update(left_img, right_img);
         //stereo.stereo_detect(left_img, right_img);
+        publish_odom(stereo);
+        publish_pose(stereo);
     }
 
+}
+
+void publish_odom(stereo_vo &stereo)
+{
+    nav_msgs::Odometry odometry;
+    odometry.header.frame_id = "odom";
+    odometry.header.stamp = ros::Time(stereo.timestamp);
+
+    odometry.child_frame_id = "base_link";
+    odometry.pose.pose.position.x = stereo.t(0);
+    odometry.pose.pose.position.y = stereo.t(1);
+    odometry.pose.pose.position.z = stereo.t(2);
+    odometry.pose.pose.orientation.x = stereo.q.x();
+    odometry.pose.pose.orientation.y = stereo.q.y();
+    odometry.pose.pose.orientation.z = stereo.q.z();
+    odometry.pose.pose.orientation.w = stereo.q.w();
+    pub_odom.publish(odometry);
+}
+
+void publish_pose(stereo_vo &stereo)
+{
+    static nav_msgs::Path path;
+    geometry_msgs::PoseStamped pose;
+    Eigen::Quaterniond q = stereo.q;
+    Eigen::Vector3d p = stereo.t;
+
+    pose.header.stamp = ros::Time(stereo.timestamp);
+    pose.header.frame_id = "odom";
+    pose.pose.orientation.w = q.w();
+    pose.pose.orientation.x = q.x();
+    pose.pose.orientation.y = q.y();
+    pose.pose.orientation.z = q.z();
+    pose.pose.position.x = p(0);
+    pose.pose.position.y = p(1);
+    pose.pose.position.z = p(2);
+    pub_pose.publish(pose);
+
+    //cout << "publish pose: " << endl;
+    //_pose.print_state();
+    path.header.frame_id = "odom";
+    path.poses.push_back(pose);
+    pub_path.publish(path);
+
+    //send transfrom
+    static tf2_ros::TransformBroadcaster br;
+    geometry_msgs::TransformStamped tr;
+    tr.header.stamp = ros::Time(stereo.timestamp);
+    tr.header.frame_id = "odom";
+    tr.child_frame_id = "base_link";
+    tr.transform.translation.x = stereo.t(0);
+    tr.transform.translation.y = stereo.t(1);
+    tr.transform.translation.z = stereo.t(2);
+    tr.transform.rotation.x = pose.pose.orientation.x;
+    tr.transform.rotation.y = pose.pose.orientation.y;
+    tr.transform.rotation.z = pose.pose.orientation.z;
+    tr.transform.rotation.w = pose.pose.orientation.w;
+    br.sendTransform(tr);
+}
+
+void publish_cloud(stereo_vo &stereo)
+{
+    std_msgs::Header header;
+    header.stamp = ros::Time(stereo.timestamp);
+    header.frame_id = "base_link";
 }
 
 int main(int argc, char** argv)
@@ -56,6 +133,9 @@ int main(int argc, char** argv)
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
     message_filters::Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), left_img_sub, right_img_sub);
     sync.registerCallback(boost::bind(&image_callback, _1, _2));
+
+    pub_pose = n.advertise<geometry_msgs::PoseStamped>("/stereo_pose", 10);
+    pub_path = n.advertise<nav_msgs::Path>("/stereo_path", 10);
 
     ros::spin();
     return 0;

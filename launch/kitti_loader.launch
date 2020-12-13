@@ -1,0 +1,12 @@
+<launch>
+    
+
+    <node name="kitti_loader" pkg="stereo_vo" type="kitti_loader" output="screen"> 
+        <param name="dataset_folder" type="string" value="/home/libing/data/kitti_raw/" />
+        <param name="sequence_number" type="string" value="00" />
+        <param name="fixed_frame_id" type="string" value="odom" />
+        <param name="publish_delay" type="int" value="1" />
+    </node>
+
+     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find stereo_vo)/rviz_cfg/stereo_vo.rviz"/>
+</launch>

@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   nav_msgs
   cv_bridge
+  image_transport
   tf
   message_filters
 )
@@ -164,13 +165,12 @@ include_directories(
 #   ${catkin_LIBRARIES}
 # )
 
+add_executable(kitti_loader  src/kitti_loader.cpp)
+target_link_libraries(kitti_loader ${catkin_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS})
+
+
 add_executable(stereo_vo  src/stereo_vo_node.cpp)
 target_link_libraries(stereo_vo ${catkin_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS})
-
-#utest
-add_executable(quasi_dense_example  utest/quasi_dense_example.cpp)
-target_link_libraries(quasi_dense_example ${catkin_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS})
-
 
 #############
 ## Install ##

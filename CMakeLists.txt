@@ -165,6 +165,11 @@ include_directories(
 add_executable(stereo_vo  src/stereo_vo_node.cpp)
 target_link_libraries(stereo_vo ${catkin_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS})
 
+#utest
+add_executable(quasi_dense_example  utest/quasi_dense_example.cpp)
+target_link_libraries(quasi_dense_example ${catkin_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS})
+
+
 #############
 ## Install ##
 #############

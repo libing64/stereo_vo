@@ -25,7 +25,7 @@ private:
     double baseline;
     cv::Mat camera_matrix;
     cv::Mat dist_coeffs;
-    Mat keyframe_img;
+    Mat keyframe;
 public:
     Quaterniond q;
     Vector3d t;
@@ -39,6 +39,7 @@ public:
     vector<Point3f> feat3ds;
     vector<Point2f> feats;
     Mat masks;
+
     stereo_vo();
     ~stereo_vo();
 
@@ -50,7 +51,6 @@ public:
     int stereo_track(Mat& keyframe, Mat& img);
 
     void update(Mat& left_img, Mat& right_img);
-    void update_keyframe(Mat &left_img, Mat &right_img);
     void visualize_features(Mat &img, vector<Point2f> &feats, vector<Point2f> &feats_prev, vector<uchar> &status);
 };
 
@@ -137,7 +137,7 @@ void stereo_vo::stereo_detect(Mat &left_img, Mat &right_img)
         }
     }
     //cout << "feat3ds: " << feat3ds << endl;
-    left_img.copyTo(keyframe_img);
+    left_img.copyTo(keyframe);
     qk = q;
     tk = t;
     cout << "stereo detect: " << qk.coeffs().transpose() << "  tk: " << t.transpose() << endl;
@@ -247,7 +247,7 @@ void stereo_vo::update(Mat &left_img, Mat &right_img)
         stereo_detect(left_img, right_img);
     } else 
     {
-        int inlier_count = stereo_track(keyframe_img, left_img);
+        int inlier_count = stereo_track(keyframe, left_img);
         if (inlier_count < min_feat_cnt)
         {
             stereo_detect(left_img, right_img);

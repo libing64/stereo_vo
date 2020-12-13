@@ -207,7 +207,7 @@ int stereo_vo::stereo_track(Mat &keyframe, Mat &img)
     Mat rvec, tvec;
     Mat dR;
     vector<uchar> inliers;
-    bool ret = cv::solvePnPRansac(point3ds, points, camera_matrix, dist_coeffs,
+    bool ret = cv::solvePnPRansac(point3ds, points_curr, camera_matrix, dist_coeffs,
                                   rvec, tvec,
                                   false, 30, 6.0, 0.99, inliers, cv::SOLVEPNP_ITERATIVE);
     cout << "rvec: " << rvec << endl;

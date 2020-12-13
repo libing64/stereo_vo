@@ -129,8 +129,8 @@ void stereo_vo::stereo_detect(Mat &left_img, Mat &right_img)
                 p.y = 0;
                 p.z = 0;
             }
-            cout << "dxdy: " << dx << " " << dy << endl;
-            cout << "p: " << p << endl;
+            // cout << "dxdy: " << dx << " " << dy << endl;
+            // cout << "p: " << p << endl;
             feat3ds[j] = p;
             feats[j] = left_feats[i];
             j++;
@@ -140,6 +140,7 @@ void stereo_vo::stereo_detect(Mat &left_img, Mat &right_img)
     left_img.copyTo(keyframe_img);
     qk = q;
     tk = t;
+    cout << "stereo detect: " << qk.coeffs().transpose() << "  tk: " << t.transpose() << endl;
     stereo_visualize(left_img, right_img, left_feats, right_feats);
 }
 
@@ -215,23 +216,23 @@ int stereo_vo::stereo_track(Mat &keyframe, Mat &img)
     if (ret)
     {
         cv::Rodrigues(rvec, dR);
-    }
 
-    Matrix3d R;
-    Quaterniond dq;
-    Vector3d dt;
-    for (int i = 0; i < 3; i++)
-    {
-        for (int j = 0; j < 3; j++)
+        Matrix3d R;
+        Quaterniond dq;
+        Vector3d dt;
+        for (int i = 0; i < 3; i++)
         {
-            R(i, j) = dR.at<double>(i, j);
+            for (int j = 0; j < 3; j++)
+            {
+                R(i, j) = dR.at<double>(i, j);
+            }
+            dt(i) = tvec.at<double>(i);
         }
-        dt(i) = tvec.at<double>(i);
+
+        t = tk + qk.toRotationMatrix() * dt;
+        q = qk * dq;
+        cout << "stereo track: " << q.coeffs().transpose() << "  t: " << t.transpose() << endl;
     }
-
-    q = qk * dq;
-    t = tk + qk.toRotationMatrix() * dt;
-
     int inlier_count = std::count(inliers.begin(), inliers.end(), 1);
     return inlier_count;
 }

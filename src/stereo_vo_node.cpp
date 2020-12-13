@@ -33,9 +33,9 @@ void image_callback(const sensor_msgs::ImageConstPtr &left_image_msg,
     if (stereo.is_camera_info_init)
     {
         Mat left_img = cv_bridge::toCvCopy(left_image_msg, string("mono8"))->image;
-        Mat right_img = cv_bridge::toCvCopy(left_image_msg, string("mono8"))->image;
-        imshow("left", left_img);
-        imshow("right", right_img);
+        Mat right_img = cv_bridge::toCvCopy(right_image_msg, string("mono8"))->image;
+        //imshow("left", left_img);
+        //imshow("right", right_img);
         //waitKey(2);
         //stereo.update(left_img, right_img);
         stereo.stereo_detect(left_img, right_img);

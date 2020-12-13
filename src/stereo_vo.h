@@ -109,7 +109,7 @@ void stereo_vo::stereo_detect(Mat &left_img, Mat &right_img)
     vector<uchar> status;
     vector<float> err;
     cv::calcOpticalFlowPyrLK(left_img, right_img, left_feats, right_feats, status, err);
-    visualize_features(left_img, left_feats, right_feats, status);
+    //visualize_features(left_img, left_feats, right_feats, status);
 
     double cx = K(0, 2);
     double cy = K(1, 2);
@@ -138,11 +138,15 @@ void stereo_vo::stereo_detect(Mat &left_img, Mat &right_img)
                 p.y = 0;
                 p.z = 0;
             }
+            cout << "dxdy: " << dx << " " << dy << endl;
+            cout << "p: " << p << endl;
             feat3ds[j] = p;
             feats[j] = left_feats[i];
             j++;
         }
     }
+    //cout << "feat3ds: " << feat3ds << endl;
+    left_img.copyTo(keyframe_img);
     stereo_visualize(left_img, right_img, left_feats, right_feats);
 }
 
@@ -190,7 +194,7 @@ void stereo_vo::update(Mat &left_img, Mat &right_img)
         q = Quaterniond::Identity();
         t = Vector3d::Zero();
 
-        update_keyframe(left_img, right_img);
+        stereo_detect(left_img, right_img);
     } else 
     {
         //feature tracking
@@ -203,7 +207,7 @@ void stereo_vo::update(Mat &left_img, Mat &right_img)
         int valid_cnt = get_valid_feat_cnt(status);
         if (valid_cnt < min_track_cnt)//update keyframe
         {
-            update_keyframe(left_img, right_img);
+            stereo_detect(left_img, right_img);
         } else 
         {
             vector<Point3f> point3ds(valid_cnt);

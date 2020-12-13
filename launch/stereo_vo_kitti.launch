@@ -1,0 +1,19 @@
+<launch>
+    
+
+    <!-- <node pkg="rosbag" type="play" name="play" args="/home/libing/data/rosbag/kitti_stereo/kitti_07.bag" /> -->
+
+    <node name="kitti_loader" pkg="stereo_vo" type="kitti_loader" output="log"> 
+        <param name="dataset_folder" type="string" value="/home/libing/data/kitti_raw/" />
+        <param name="sequence_number" type="string" value="00" />
+        <param name="fixed_frame_id" type="string" value="odom" />
+        <param name="publish_delay" type="int" value="1" />
+    </node>
+
+    <node pkg="stereo_vo" type="stereo_vo" name="stereo_vo" output="screen" >
+        <remap from="/left_image" to="/image_left"/>
+        <remap from="/right_image" to="/image_right"/>
+        <remap from="/camera_info" to="/right_camera_info"/>
+    </node>
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find stereo_vo)/rviz_cfg/stereo_vo.rviz"/>
+</launch>

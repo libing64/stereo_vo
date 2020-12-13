@@ -26,6 +26,8 @@ stereo_vo stereo;
 
 ros::Publisher pub_odom, pub_pose, pub_path;
 
+Quaterniond q_cam2imu;
+
 void publish_odom(stereo_vo &stereo);
 void publish_pose(stereo_vo &stereo);
 void publish_path(stereo_vo &stereo);
@@ -62,14 +64,17 @@ void publish_odom(stereo_vo &stereo)
     odometry.header.frame_id = "odom";
     odometry.header.stamp = ros::Time(stereo.timestamp);
 
+    Eigen::Quaterniond q = q_cam2imu * stereo.q;
+    Eigen::Vector3d p = q_cam2imu.toRotationMatrix() * stereo.t;
+
     odometry.child_frame_id = "base_link";
-    odometry.pose.pose.position.x = stereo.t(0);
-    odometry.pose.pose.position.y = stereo.t(1);
-    odometry.pose.pose.position.z = stereo.t(2);
-    odometry.pose.pose.orientation.x = stereo.q.x();
-    odometry.pose.pose.orientation.y = stereo.q.y();
-    odometry.pose.pose.orientation.z = stereo.q.z();
-    odometry.pose.pose.orientation.w = stereo.q.w();
+    odometry.pose.pose.position.x = p(0);
+    odometry.pose.pose.position.y = p(1);
+    odometry.pose.pose.position.z = p(2);
+    odometry.pose.pose.orientation.x = q.x();
+    odometry.pose.pose.orientation.y = q.y();
+    odometry.pose.pose.orientation.z = q.z();
+    odometry.pose.pose.orientation.w = q.w();
     pub_odom.publish(odometry);
 }
 
@@ -77,8 +82,8 @@ void publish_pose(stereo_vo &stereo)
 {
     static nav_msgs::Path path;
     geometry_msgs::PoseStamped pose;
-    Eigen::Quaterniond q = stereo.q;
-    Eigen::Vector3d p = stereo.t;
+    Eigen::Quaterniond q = q_cam2imu * stereo.q;
+    Eigen::Vector3d p = q_cam2imu.toRotationMatrix() * stereo.t;
 
     pose.header.stamp = ros::Time(stereo.timestamp);
     pose.header.frame_id = "odom";
@@ -103,9 +108,9 @@ void publish_pose(stereo_vo &stereo)
     tr.header.stamp = ros::Time(stereo.timestamp);
     tr.header.frame_id = "odom";
     tr.child_frame_id = "base_link";
-    tr.transform.translation.x = stereo.t(0);
-    tr.transform.translation.y = stereo.t(1);
-    tr.transform.translation.z = stereo.t(2);
+    tr.transform.translation.x = p(0);
+    tr.transform.translation.y = p(1);
+    tr.transform.translation.z = p(2);
     tr.transform.rotation.x = pose.pose.orientation.x;
     tr.transform.rotation.y = pose.pose.orientation.y;
     tr.transform.rotation.z = pose.pose.orientation.z;
@@ -138,6 +143,13 @@ int main(int argc, char** argv)
     pub_pose = n.advertise<geometry_msgs::PoseStamped>("/stereo_pose", 10);
     pub_path = n.advertise<nav_msgs::Path>("/stereo_path", 10);
 
+
+    Matrix3d R_cam2imu;
+    R_cam2imu << 0, 0, 1, -1, 0, 0, 0, 1, 0;
+    q_cam2imu = Quaterniond(R_cam2imu);
+    cout << "R_cam2imu: " << R_cam2imu << endl;
+    cout << "q_cam2imu: " << q_cam2imu.coeffs().transpose() << endl;
+                 
     ros::spin();
     return 0;
 }

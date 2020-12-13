@@ -134,6 +134,7 @@ int main(int argc, char** argv)
     message_filters::Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), left_img_sub, right_img_sub);
     sync.registerCallback(boost::bind(&image_callback, _1, _2));
 
+    pub_odom = n.advertise<nav_msgs::Odometry>("/odom", 10);
     pub_pose = n.advertise<geometry_msgs::PoseStamped>("/stereo_pose", 10);
     pub_path = n.advertise<nav_msgs::Path>("/stereo_path", 10);
 

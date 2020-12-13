@@ -97,6 +97,23 @@ int main(int argc, char **argv)
     //std::ifstream camera_info_file(dataset_folder + ground_truth_path, std::ifstream::in);
     Eigen::MatrixXd P1, P2;
     readin_camera_info(dataset_folder + camera_info_path, P1, P2);
+    sensor_msgs::CameraInfo left_camera_info, right_camera_info;
+    for (int i = 0; i < 3; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            left_camera_info.P[i * 4 + j] = P1(i, j);
+            right_camera_info.P[i * 4 + j] = P2(i, j);
+        }
+    }
+    for (int i = 0; i < 3; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            left_camera_info.K[i * 3 + j] = P1(i, j);
+            right_camera_info.K[i * 3 + j] = P2(i, j);
+        }
+    }
 
     Eigen::Matrix3d R_transform;
     R_transform << 0, 0, 1, -1, 0, 0, 0, -1, 0;
@@ -161,15 +178,6 @@ int main(int argc, char **argv)
         pub_image_right.publish(image_right_msg);
 
 
-        sensor_msgs::CameraInfo left_camera_info, right_camera_info;
-        for (int i = 0; i < 3; i++)
-        {
-            for (int j = 0; j < 4; j++)
-            {
-                left_camera_info.P[i * 4 + j] = P1(i, j);
-                right_camera_info.P[i * 4 + j] = P2(i, j); 
-            }
-        }
         left_camera_info.header = header;
         right_camera_info.header = header;
         pub_left_camera_info.publish(left_camera_info);

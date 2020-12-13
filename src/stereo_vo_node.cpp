@@ -145,7 +145,7 @@ int main(int argc, char** argv)
 
 
     Matrix3d R_cam2imu;
-    R_cam2imu << 0, 0, 1, -1, 0, 0, 0, 1, 0;
+    R_cam2imu << 0, 0, 1, -1, 0, 0, 0, -1, 0;
     q_cam2imu = Quaterniond(R_cam2imu);
     cout << "R_cam2imu: " << R_cam2imu << endl;
     cout << "q_cam2imu: " << q_cam2imu.coeffs().transpose() << endl;

@@ -91,9 +91,10 @@ void stereo_vo::set_camere_info(const sensor_msgs::CameraInfoConstPtr& msg)
 
 void stereo_vo::stereo_detect(Mat &left_img, Mat &right_img)
 {
-    Ptr<FeatureDetector> detector = cv::ORB::create();
     vector<KeyPoint> left_keypoints;
-    detector->detect(left_img, left_keypoints);
+    //Ptr<FeatureDetector> detector = cv::ORB::create();
+    //detector->detect(left_img, left_keypoints);
+    cv::FAST(left_img, left_keypoints, 20, true);
     vector<Point2f> left_feats, right_feats;
     KeyPoint::convert(left_keypoints, left_feats);
 

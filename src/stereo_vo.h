@@ -10,13 +10,19 @@ using namespace std;
 using namespace Eigen;
 using namespace cv;
 
+static bool CvKeyPointResponseCompare(const cv::KeyPoint &p1,
+                                      const cv::KeyPoint &p2)
+{
+    return (p1.response > p2.response);
+}
+
 class stereo_vo
 {
 private:
-    int max_feat_cnt = 500;
-    int min_feat_cnt = 100;
+    int max_feat_cnt = 1000;
+    int min_feat_cnt = 50;
     int min_track_cnt = 50;
-    int min_feat_dist = 10;
+    int min_feat_dist = 30;
     int min_disparity = 2;
     int max_epipolar = 5;
     bool feat_vis_enable = true;
@@ -44,6 +50,8 @@ public:
     ~stereo_vo();
 
     void set_camere_info(const sensor_msgs::CameraInfoConstPtr& msg);
+
+    void remove_outliers(vector<Point2f> &feats_prev, vector<Point2f> &feats_curr, vector<Point3f> &feat3ds);
 
     void stereo_detect(Mat &left_img, Mat &right_img);
     void stereo_visualize(Mat &left_img, Mat &right_img, vector<Point2f>&left_feats, vector<Point2f>&right_feats);
@@ -89,14 +97,51 @@ void stereo_vo::set_camere_info(const sensor_msgs::CameraInfoConstPtr& msg)
     is_camera_info_init = true;
 }
 
+void stereo_vo::remove_outliers(vector<Point2f> &feats_prev, vector<Point2f> &feats_curr, vector<Point3f>& feat3ds)
+{
+    vector<uchar> status;
+    Mat F = findFundamentalMat(feats_prev, feats_curr, FM_RANSAC, 1.0, 0.99, status);
+    int j = 0;
+    for (int i = 0; i < status.size(); i++)
+    {
+        if (status[i] && (i != j))
+        {
+            feats_prev[j] = feats_prev[i];
+            feats_curr[j] = feats_curr[i];
+            feat3ds[j] = feat3ds[i];
+            j++;
+        }
+    }
+    feats_prev.resize(j);
+    feats_curr.resize(j);
+    feat3ds.resize(j);
+    cout << "inlier percent: " << (feats_prev.size() * 1.0) / status.size() << endl;
+}
+
 void stereo_vo::stereo_detect(Mat &left_img, Mat &right_img)
 {
     vector<KeyPoint> left_keypoints;
+    vector<Point2f> left_feats, right_feats;
+    //1. orb feature
     //Ptr<FeatureDetector> detector = cv::ORB::create();
     //detector->detect(left_img, left_keypoints);
-    cv::FAST(left_img, left_keypoints, 20, true);
-    vector<Point2f> left_feats, right_feats;
-    KeyPoint::convert(left_keypoints, left_feats);
+    //KeyPoint::convert(left_keypoints, left_feats);
+
+    //2. fast feature
+    int thresh = 10;
+    Mat mask = cv::Mat(left_img.size(), CV_8UC1, cv::Scalar(255));
+    Ptr<FastFeatureDetector> detector = FastFeatureDetector::create(thresh);
+    detector->detect(left_img, left_keypoints);
+    sort(left_keypoints.begin(), left_keypoints.end(), CvKeyPointResponseCompare);
+
+    for (int i = 0; i < left_keypoints.size(); i++)
+    {
+        if (left_feats.size() < max_feat_cnt && mask.at<unsigned char>(left_keypoints[i].pt.y, left_keypoints[i].pt.x))
+        {
+            left_feats.push_back(left_keypoints[i].pt);
+            circle(mask, left_keypoints[i].pt, min_feat_dist, cv::Scalar(0), cv::FILLED);
+        }
+    }
 
     vector<uchar> status;
     vector<float> err;
@@ -109,6 +154,8 @@ void stereo_vo::stereo_detect(Mat &left_img, Mat &right_img)
     int count = std::count(status.begin(), status.end(), 1);
     feat3ds.resize(count);
     feats.resize(count);
+
+    vector<Point2f> feats_tracked(count);
 
     int j = 0;
     for (int i = 0; i < left_feats.size(); i++)
@@ -134,9 +181,13 @@ void stereo_vo::stereo_detect(Mat &left_img, Mat &right_img)
             // cout << "p: " << p << endl;
             feat3ds[j] = p;
             feats[j] = left_feats[i];
+            feats_tracked[j] = right_feats[i];
             j++;
         }
     }
+
+    remove_outliers(feats, feats_tracked, feat3ds);
+
     //cout << "feat3ds: " << feat3ds << endl;
     left_img.copyTo(keyframe);
     qk = q;
@@ -205,6 +256,8 @@ int stereo_vo::stereo_track(Mat &keyframe, Mat &img)
             j++;
         }
     }
+    remove_outliers(points, points_curr, point3ds);
+
     Mat rvec, tvec;
     Mat dR;
     vector<uchar> inliers;

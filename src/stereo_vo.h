@@ -25,7 +25,7 @@ private:
     int min_feat_dist = 30;
     int min_disparity = 2;
     int max_epipolar = 5;
-    bool feat_vis_enable = true;
+    bool feat_vis_enable = false;
     //camera matrix
     Matrix3d K;
     double baseline;
@@ -45,6 +45,7 @@ public:
     vector<Point3f> feat3ds;
     vector<Point2f> feats;
     Mat masks;
+    Mat feats_img;
 
     stereo_vo();
     ~stereo_vo();
@@ -314,25 +315,21 @@ void stereo_vo::update(Mat &left_img, Mat &right_img)
 void stereo_vo::visualize_features(Mat &img, vector<Point2f> &feats, vector<Point2f> &feats_prev, vector<uchar>& status)
 {
     static Mat img_color;
-    if (feat_vis_enable)
+    cv::cvtColor(img, img_color, cv::COLOR_GRAY2RGB);
+    Scalar color = Scalar(0, 0, 255);
+    Scalar color_prev = Scalar(255, 0, 0);
+    Scalar color_next = Scalar(0, 255, 0);
+    for (auto i = 0; i < feats.size(); i++)
     {
-        cv::cvtColor(img, img_color, cv::COLOR_GRAY2RGB);
-        Scalar color = Scalar(0, 0, 255);
-        Scalar color_prev = Scalar(255, 0, 0);
-        Scalar color_next = Scalar(0, 255, 0);
-        for (auto i = 0; i < feats.size(); i++)
+        if (status[i])
         {
-            if (status[i])
-            {
-                line(img_color, feats[i], feats_prev[i], color, 1, 8);
-                circle(img_color, feats[i], 1, color);
-                circle(img_color, feats_prev[i], 2, color_prev);
-                circle(img_color, feats[i], 2, color_next);
-            }
+            line(img_color, feats[i], feats_prev[i], color, 1, 8);
+            circle(img_color, feats[i], 1, color);
+            circle(img_color, feats_prev[i], 2, color_prev);
+            circle(img_color, feats[i], 2, color_next);
         }
-        imshow("feats", img_color);
-        waitKey(2);
     }
+    img_color.copyTo(feats_img);
 }
 
 #endif

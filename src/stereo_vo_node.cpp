@@ -24,13 +24,14 @@ using namespace cv;
 ros::Subscriber camera_info_sub;
 stereo_vo stereo;
 
-ros::Publisher pub_odom, pub_pose, pub_path;
+ros::Publisher pub_odom, pub_pose, pub_path, pub_feats_img;
 
 Quaterniond q_cam2imu;
 
 void publish_odom(stereo_vo &stereo);
 void publish_pose(stereo_vo &stereo);
 void publish_path(stereo_vo &stereo);
+void publish_feats_img(stereo_vo &stereo);
 
 void camera_info_callback(const sensor_msgs::CameraInfoConstPtr &msg)
 {
@@ -46,18 +47,25 @@ void image_callback(const sensor_msgs::ImageConstPtr &left_image_msg,
     {
         Mat left_img = cv_bridge::toCvCopy(left_image_msg, string("mono8"))->image;
         Mat right_img = cv_bridge::toCvCopy(right_image_msg, string("mono8"))->image;
-        //imshow("left", left_img);
-        //imshow("right", right_img);
-        //waitKey(2);
+
         stereo.timestamp = left_image_msg->header.stamp.toSec();
         stereo.update(left_img, right_img);
-        //stereo.stereo_detect(left_img, right_img);
         publish_odom(stereo);
         publish_pose(stereo);
+        publish_feats_img(stereo);
     }
 
 }
 
+void publish_feats_img(stereo_vo& stereo)
+{
+    std_msgs::Header header;
+    header.stamp = ros::Time(stereo.timestamp);
+    header.frame_id = "base_link";
+    sensor_msgs::ImagePtr msg = cv_bridge::CvImage(header, "bgr8", stereo.feats_img).toImageMsg();
+    pub_feats_img.publish(msg);
+
+}
 void publish_odom(stereo_vo &stereo)
 {
     nav_msgs::Odometry odometry;
@@ -142,6 +150,7 @@ int main(int argc, char** argv)
     pub_odom = n.advertise<nav_msgs::Odometry>("/odom", 10);
     pub_pose = n.advertise<geometry_msgs::PoseStamped>("/stereo_pose", 10);
     pub_path = n.advertise<nav_msgs::Path>("/stereo_path", 10);
+    pub_feats_img = n.advertise<sensor_msgs::Image>("/feats_img", 10);
 
 
     Matrix3d R_cam2imu;

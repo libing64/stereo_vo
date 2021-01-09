@@ -9,7 +9,9 @@
 * Local Optimiation(Bundle adjustment)
 
 
-![kitti00](https://github.com/libing64/stereo_vo/blob/master/image/kitti00_stereo_vo.png) 
+![kitti07](https://github.com/libing64/stereo_vo/blob/master/image/stereo_vo.gif)
+
+![kitti00](https://github.com/libing64/stereo_vo/blob/master/image/kitti00_stereo_vo.png)
 
 ## 1.2 Building
 ```
@@ -32,6 +34,6 @@ Ubuntu 20.04 + ros noetic
 # 2. TODO
 ## 2.1 How to make the estimator more robust and accurate?
 - [ ] local sparse bundle adjustment
-- [ ] record screen to gif
+- [x] record screen to gif
 - [ ] mapping
 - [ ] fusing imu 

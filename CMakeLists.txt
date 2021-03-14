@@ -28,6 +28,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Eigen3)
 find_package(Ceres)
 find_package(OpenCV REQUIRED)
+find_package(PCL)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -133,6 +134,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
   ${OpenCV_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -170,7 +172,7 @@ target_link_libraries(kitti_loader ${catkin_LIBRARIES} ${CERES_LIBRARIES} ${Open
 
 
 add_executable(stereo_vo  src/stereo_vo_node.cpp)
-target_link_libraries(stereo_vo ${catkin_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(stereo_vo ${catkin_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS} ${PCL_LIBRARIES})
 
 #############
 ## Install ##

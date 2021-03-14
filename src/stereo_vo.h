@@ -4,6 +4,7 @@
 #include <Eigen/Eigen>
 #include <vector>
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/eigen.hpp>
 #include <sensor_msgs/CameraInfo.h>
 
 using namespace std;
@@ -105,11 +106,14 @@ void stereo_vo::remove_outliers(vector<Point2f> &feats_prev, vector<Point2f> &fe
     int j = 0;
     for (int i = 0; i < status.size(); i++)
     {
-        if (status[i] && (i != j))
+        if (status[i])
         {
-            feats_prev[j] = feats_prev[i];
-            feats_curr[j] = feats_curr[i];
-            feat3ds[j] = feat3ds[i];
+            if (i != j)
+            {
+                feats_prev[j] = feats_prev[i];
+                feats_curr[j] = feats_curr[i];
+                feat3ds[j] = feat3ds[i];
+            }
             j++;
         }
     }
@@ -270,22 +274,18 @@ int stereo_vo::stereo_track(Mat &keyframe, Mat &img)
     visualize_features(img, points, points_curr, inliers);
     if (ret)
     {
-        cv::Rodrigues(rvec, dR);
+        Mat rmat;
+        cv::Rodrigues(rvec, rmat);
 
-        Matrix3d R;
+        Matrix3d dR;
         Quaterniond dq;
         Vector3d dt;
-        for (int i = 0; i < 3; i++)
-        {
-            for (int j = 0; j < 3; j++)
-            {
-                R(i, j) = dR.at<double>(i, j);
-            }
-            dt(i) = tvec.at<double>(i);
-        }
 
-        dt = -R.transpose() * dt;
-        dq = Quaterniond(R.transpose());
+        cv2eigen(rmat, dR);
+        cv2eigen(tvec, dt);
+
+        dt = -dR.transpose() * dt;
+        dq = Quaterniond(dR.transpose());
         t = tk + qk.toRotationMatrix() * dt;
         q = qk * dq;
         cout << "stereo track: " << q.coeffs().transpose() << "  t: " << t.transpose() << endl;

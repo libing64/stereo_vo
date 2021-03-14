@@ -12,6 +12,11 @@
 #include <opencv2/opencv.hpp>
 #include "stereo_vo.h"
 
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/common/io.h>
+
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/exact_time.h>
@@ -20,11 +25,12 @@
 using namespace std;
 using namespace Eigen;
 using namespace cv;
+typedef pcl::PointXYZI PointType;
 
 ros::Subscriber camera_info_sub;
 stereo_vo stereo;
 
-ros::Publisher pub_odom, pub_pose, pub_path, pub_feats_img;
+ros::Publisher pub_odom, pub_pose, pub_path, pub_feats_img, pub_cloud;
 
 Quaterniond q_cam2imu;
 
@@ -32,6 +38,7 @@ void publish_odom(stereo_vo &stereo);
 void publish_pose(stereo_vo &stereo);
 void publish_path(stereo_vo &stereo);
 void publish_feats_img(stereo_vo &stereo);
+void publish_cloud(stereo_vo &stereo);
 
 void camera_info_callback(const sensor_msgs::CameraInfoConstPtr &msg)
 {
@@ -53,6 +60,7 @@ void image_callback(const sensor_msgs::ImageConstPtr &left_image_msg,
         publish_odom(stereo);
         publish_pose(stereo);
         publish_feats_img(stereo);
+        publish_cloud(stereo);
     }
 
 }
@@ -131,6 +139,38 @@ void publish_cloud(stereo_vo &stereo)
     std_msgs::Header header;
     header.stamp = ros::Time(stereo.timestamp);
     header.frame_id = "base_link";
+
+    Matrix3d Rk = stereo.qk.toRotationMatrix();
+
+    if (stereo.feat3ds.size())
+    {
+        pcl::PointCloud<PointType> cloud;
+        Matrix3d Ric = q_cam2imu.toRotationMatrix();
+        for (int i = 0; i < stereo.feat3ds.size(); i++)
+        {
+            Vector3d pc;
+            pc(0) = stereo.feat3ds[i].x;
+            pc(1) = stereo.feat3ds[i].y;
+            pc(2) = stereo.feat3ds[i].z;
+            pc = Rk * pc + stereo.tk;
+            Vector3d pi = Ric * pc;
+            PointType p;
+            p.x = pi(0);
+            p.y = pi(1);
+            p.z = pi(2);
+            cloud.points.push_back(p);
+        }
+
+        sensor_msgs::PointCloud2 cloud_msg;
+        pcl::toROSMsg(cloud, cloud_msg);
+
+        std_msgs::Header header;
+        header.stamp = ros::Time(stereo.timestamp);
+        header.frame_id = "odom";
+        cloud_msg.header = header;
+
+        pub_cloud.publish(cloud_msg);
+    }
 }
 
 int main(int argc, char** argv)
@@ -151,7 +191,7 @@ int main(int argc, char** argv)
     pub_pose = n.advertise<geometry_msgs::PoseStamped>("/stereo_pose", 10);
     pub_path = n.advertise<nav_msgs::Path>("/stereo_path", 10);
     pub_feats_img = n.advertise<sensor_msgs::Image>("/feats_img", 10);
-
+    pub_cloud = n.advertise<sensor_msgs::PointCloud2>("/cloud", 10);
 
     Matrix3d R_cam2imu;
     R_cam2imu << 0, 0, 1, -1, 0, 0, 0, -1, 0;
